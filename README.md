@@ -10,15 +10,13 @@ If you have any questions or requests, please contact Sacul on the official Sunf
 
 ## 👀 Starting the server
 
-Before going wild with commands in your command prompt, please make sure that you have NodeJS 16 installed and ready on your computer.
+Before going wild with commands in your command prompt, please make sure that you have NodeJS installed and ready on your computer.
 
-[Download NodeJS 16](https://nodejs.org/en/download)
+[Download NodeJS](https://nodejs.org/en/download)
 
-Now that you're ready with NodeJS, you will need to fork and clone the fork on your computer.
+Now that you're ready with NodeJS, you will need to clone this template on your account.
 
-To fork this repository (aka clone it on your account) follow this link:
-
-https://github.com/0xSacul/template-community-island-server/fork
+Using the green "Use this template" button on the top of the page you'll be able to clone this template on your account.
 
 For beginners I would recommand using [Github Desktop](https://desktop.github.com/), the friendly graphical UI is really easy to use for beginners.
 
