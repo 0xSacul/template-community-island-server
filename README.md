@@ -1,4 +1,4 @@
-# Sunflower Land Community Island Server (Template using TypeScript).
+# Sunflower Land Community Island Server (Template using Colyseus/TypeScript).
 
 This basic template will help you set up your very first custom server to host your own island in Sunflower Land Community Island.
 
