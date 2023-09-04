@@ -3,15 +3,15 @@ import {
   Clothing,
   InputData,
   Message,
-  IngalsRoomState,
+  RoomState,
   Player,
-} from "./RoomState";
+} from "./localRoomState";
 import { IncomingMessage } from "http";
 import { Bumpkin } from "../types/bumpkin";
 
 const MAX_MESSAGES = 100;
 
-export class IngalsRoom extends Room<IngalsRoomState> {
+export class LocalRoom extends Room<RoomState> {
   fixedTimeStep = 1000 / 60;
 
   maxClients: number = 150;
@@ -24,8 +24,14 @@ export class IngalsRoom extends Room<IngalsRoomState> {
     }
   };
 
+  // Farm ID > sessionId
+  private farmConnections: Record<number, string> = {};
+
   onCreate(options: any) {
-    this.setState(new IngalsRoomState());
+    this.setState(new RoomState());
+
+    // set map dimensions
+    (this.state.mapWidth = 600), (this.state.mapHeight = 600);
 
     this.onMessage(0, (client, input) => {
       // handle player input
@@ -44,6 +50,11 @@ export class IngalsRoom extends Room<IngalsRoomState> {
         this.fixedTick(this.fixedTimeStep);
       }
     });
+
+    const message = new Message();
+    message.text = `Welcome to ${this.roomName.replace("_", " ")}.`;
+    message.sentAt = Date.now();
+    this.pushMessage(message);
   }
 
   fixedTick(timeStep: number) {
@@ -52,11 +63,15 @@ export class IngalsRoom extends Room<IngalsRoomState> {
     this.state.players.forEach((player, key) => {
       let input: InputData | undefined;
 
-      // dequeue player inputs
+      // dequeue player inputs.
       while ((input = player.inputQueue.shift())) {
         if (input.x || input.y) {
           player.x = input.x;
           player.y = input.y;
+        }
+
+        if (input.sceneId) {
+          player.sceneId = input.sceneId;
         }
 
         if (input.clothing) {
@@ -78,6 +93,7 @@ export class IngalsRoom extends Room<IngalsRoomState> {
 
         if (input.text) {
           const message = new Message();
+          message.sceneId = player.sceneId;
           message.text = input.text;
           message.sessionId = key;
           message.farmId = player.farmId;
@@ -90,22 +106,58 @@ export class IngalsRoom extends Room<IngalsRoomState> {
 
   async onAuth(
     client: Client<any>,
-    options: { jwt: string; farmId: number; bumpkin: Bumpkin },
+    options: {
+      jwt: string;
+      farmId: number;
+      bumpkin: Bumpkin;
+      sceneId: string;
+      experience: number;
+    },
     request?: IncomingMessage | undefined
   ) {
-    // TODO - implement your own Auth here to verify who they are
-    return { bumpkin: options.bumpkin, farmId: options.farmId };
+    return {
+      bumpkin: options.bumpkin,
+      farmId: options.farmId,
+      sceneId: options.sceneId,
+      experience: options.experience,
+    };
+
+    // console.log("Try auth plaza", { options });
+    // if (!options.jwt || !options.farmId) return false;
+
+    // const jwt = await verifyRawJwt(options.jwt);
+
+    // if (!jwt.userAccess.verified) return false;
+
+    // const farm = await loadFarm(options.farmId);
+
+    // if (!farm || farm.updatedBy !== jwt.address) {
+    //   throw new Error("Not your farm");
+    // }
+
+    // return {
+    //   bumpkin: farm.gameState.bumpkin,
+    //   farmId: options.farmId,
+    // };
   }
 
   onJoin(
     client: Client,
     options: { x: number; y: number },
-    auth: { bumpkin: Bumpkin; farmId: number }
+    auth: {
+      bumpkin: Bumpkin;
+      farmId: number;
+      sceneId: string;
+      experience: number;
+    }
   ) {
+    this.farmConnections[auth.farmId] = client.sessionId;
+
     const player = new Player();
-    player.x = options.x;
-    player.y = options.y;
+    player.x = options.x ?? 560; // Math.random() * this.state.mapWidth;
+    player.y = options.y ?? 300; //Math.random() * this.state.mapHeight;
     player.farmId = auth.farmId;
+    player.experience = auth.experience ?? 0;
 
     const clothing = auth.bumpkin.equipped;
     player.clothing.body = clothing.body;
@@ -118,12 +170,9 @@ export class IngalsRoom extends Room<IngalsRoomState> {
     player.clothing.hair = clothing.hair;
     player.clothing.wings = clothing.wings;
 
-    this.state.players.set(client.sessionId, player);
+    player.sceneId = auth.sceneId;
 
-    const message = new Message();
-    message.text = `Player ${client.sessionId} of farm ${auth.farmId} joined. Welcome on my Island!`;
-    message.sentAt = Date.now();
-    this.pushMessage(message);
+    this.state.players.set(client.sessionId, player);
   }
 
   onLeave(client: Client, consented: boolean) {
